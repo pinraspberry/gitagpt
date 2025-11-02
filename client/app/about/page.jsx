@@ -33,7 +33,7 @@ export default function AboutUs() {
       program: 'Integrated CSE-MBA',
       rollNo: '23BTM009',
       github: '#',
-      linkedin: 'https://linkedin.com/in/ishitabhatt',
+      linkedin: 'https://in.linkedin.com/in/ishitabhatt28',
       instagram: 'https://instagram.com/ishitaa.28'
     }
   ];

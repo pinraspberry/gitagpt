@@ -42,21 +42,26 @@ async def verify_firebase_token(
         AuthenticationError: If token is invalid or verification fails
     """
     if not firebase_service.is_initialized():
+        print("❌ Firebase service not initialized")
         raise AuthenticationError("Authentication service unavailable")
     
     try:
         # Extract token from credentials
         token = credentials.credentials
+        print(f"🔍 Verifying token: {token[:20]}..." if token else "❌ No token provided")
         
         # Verify token with Firebase
         decoded_token = firebase_service.verify_token(token)
         
         if not decoded_token:
+            print("❌ Token verification returned None")
             raise AuthenticationError("Invalid or expired token")
         
+        print(f"✅ Token verified for user: {decoded_token.get('email', 'unknown')}")
         return decoded_token
     
     except Exception as e:
+        print(f"❌ Token verification failed: {str(e)}")
         raise AuthenticationError(f"Token verification failed: {str(e)}")
 
 
@@ -78,15 +83,18 @@ async def get_current_user(
     Raises:
         AuthenticationError: If user creation/retrieval fails
     """
+    firebase_uid = token.get("uid")
+    email = token.get("email")
+    display_name = token.get("name")
+    
+    print(f"🔍 Processing user: {email} (UID: {firebase_uid})")
+    
+    if not firebase_uid:
+        print("❌ Missing Firebase UID in token")
+        raise AuthenticationError("Invalid token: missing user ID")
+    
     try:
-        firebase_uid = token.get("uid")
-        email = token.get("email")
-        display_name = token.get("name")
-        
-        if not firebase_uid:
-            raise AuthenticationError("Invalid token: missing user ID")
-        
-        # Try to get existing user
+        # Try direct database connection first
         user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
         
         if not user:
@@ -109,9 +117,41 @@ async def get_current_user(
         
         return user
     
-    except Exception as e:
-        db.rollback()
-        raise AuthenticationError(f"User authentication failed: {str(e)}")
+    except Exception as db_error:
+        print(f"Direct database connection failed, trying Supabase service: {db_error}")
+        
+        try:
+            # Fallback to Supabase service
+            from app.services.supabase_service import get_supabase_service
+            supabase_service = get_supabase_service()
+            
+            # Get or create user using Supabase service
+            user_data = await supabase_service.create_or_update_user(firebase_uid, {
+                'email': email,
+                'display_name': display_name,
+                'preferences': {}
+            })
+            
+            if not user_data:
+                raise AuthenticationError("Failed to create/retrieve user from Supabase")
+            
+            # Create a User object from Supabase data
+            user = User(
+                id=user_data['id'],
+                firebase_uid=user_data['firebase_uid'],
+                email=user_data['email'],
+                display_name=user_data['display_name'],
+                preferences=user_data.get('preferences', {}),
+                last_active=datetime.fromisoformat(user_data['last_active'].replace('Z', '+00:00')) if user_data.get('last_active') else datetime.utcnow(),
+                created_at=datetime.fromisoformat(user_data['created_at'].replace('Z', '+00:00')) if user_data.get('created_at') else datetime.utcnow()
+            )
+            
+            print(f"Successfully authenticated user via Supabase service: {firebase_uid}")
+            return user
+            
+        except Exception as supabase_error:
+            print(f"Supabase service also failed: {supabase_error}")
+            raise AuthenticationError(f"User authentication failed: {str(supabase_error)}")
 
 
 async def get_optional_user(
@@ -142,15 +182,42 @@ async def get_optional_user(
         if not firebase_uid:
             return None
         
-        # Get user from database
-        user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
-        
-        if user:
-            # Update last active timestamp
-            user.last_active = datetime.utcnow()
-            db.commit()
-        
-        return user
+        try:
+            # Try direct database connection first
+            user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
+            
+            if user:
+                # Update last active timestamp
+                user.last_active = datetime.utcnow()
+                db.commit()
+            
+            return user
+            
+        except Exception:
+            # Fallback to Supabase service
+            try:
+                from app.services.supabase_service import get_supabase_service
+                supabase_service = get_supabase_service()
+                
+                user_data = await supabase_service.get_user_by_firebase_uid(firebase_uid)
+                if not user_data:
+                    return None
+                
+                # Create User object from Supabase data
+                user = User(
+                    id=user_data['id'],
+                    firebase_uid=user_data['firebase_uid'],
+                    email=user_data['email'],
+                    display_name=user_data['display_name'],
+                    preferences=user_data.get('preferences', {}),
+                    last_active=datetime.fromisoformat(user_data['last_active'].replace('Z', '+00:00')) if user_data.get('last_active') else datetime.utcnow(),
+                    created_at=datetime.fromisoformat(user_data['created_at'].replace('Z', '+00:00')) if user_data.get('created_at') else datetime.utcnow()
+                )
+                
+                return user
+                
+            except Exception:
+                return None
     
     except Exception:
         return None

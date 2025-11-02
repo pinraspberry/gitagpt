@@ -1,7 +1,9 @@
 'use client';
-import React, { useState } from 'react';
-import { BookOpen, Calendar, Clock, Heart, Search, Filter, ChevronDown, MessageCircle, Smile, TrendingUp, Download, Share2, Trash2, Star, Eye, Sun, Moon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Calendar, Clock, Heart, Search, Filter, ChevronDown, MessageCircle, TrendingUp, Download, Share2, Trash2, Star, Eye, Sun, Moon, Loader2 } from 'lucide-react';
 import { useThemeMode } from '@/hooks/useThemeMode';
+import Navigation from '@/components/shared/Navigation';
+// import { getChatHistory } from '@/lib/api'; // Commented out - using static data
 
 const MyJourneyPage = () => {
   const [darkMode, setDarkMode] = useThemeMode();
@@ -10,147 +12,214 @@ const MyJourneyPage = () => {
   const [filterMode, setFilterMode] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock conversation data
-  const conversations = [
-    {
-      id: 1,
-      title: "Finding peace in chaos",
-      date: "Oct 26, 2025",
-      time: "6:30 PM",
-      duration: "15 min",
-      messageCount: 12,
-      emotion: { label: "Anxiety", emoji: "😰", color: "blue" },
-      mode: "wisdom",
-      preview: "How do I find inner peace when everything around me feels chaotic?",
-      verses: [
-        { chapter: 2, verse: 47, text: "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन" },
-        { chapter: 6, verse: 5, text: "उद्धरेदात्मनात्मानं नात्मानमवसादयेत्" }
-      ],
-      favorite: true,
-      tags: ["peace", "anxiety", "work"]
-    },
-    {
-      id: 2,
-      title: "Understanding my life purpose",
-      date: "Oct 25, 2025",
-      time: "8:15 AM",
-      duration: "22 min",
-      messageCount: 18,
-      emotion: { label: "Confusion", emoji: "🤔", color: "purple" },
-      mode: "socratic",
-      preview: "What is my dharma? How do I know I'm on the right path?",
-      verses: [
-        { chapter: 3, verse: 35, text: "श्रेयान्स्वधर्मो विगुणः परधर्मात्स्वनुष्ठितात्" }
-      ],
-      favorite: false,
-      tags: ["dharma", "purpose", "career"]
-    },
-    {
-      id: 3,
-      title: "Letting go of attachments",
-      date: "Oct 24, 2025",
-      time: "9:45 PM",
-      duration: "18 min",
-      messageCount: 14,
-      emotion: { label: "Sadness", emoji: "😢", color: "indigo" },
-      mode: "story",
-      preview: "I'm struggling to let go of someone I love. How do I detach without losing compassion?",
-      verses: [
-        { chapter: 2, verse: 48, text: "योगस्थः कुरु कर्माणि सङ्गं त्यक्त्वा धनञ्जय" }
-      ],
-      favorite: true,
-      tags: ["attachment", "relationships", "love"]
-    },
-    {
-      id: 4,
-      title: "Dealing with workplace conflict",
-      date: "Oct 23, 2025",
-      time: "1:20 PM",
-      duration: "12 min",
-      messageCount: 10,
-      emotion: { label: "Anger", emoji: "😠", color: "red" },
-      mode: "wisdom",
-      preview: "My colleague took credit for my work. I feel so angry and betrayed.",
-      verses: [
-        { chapter: 16, verse: 21, text: "त्रिविधं नरकस्येदं द्वारं नाशनमात्मनः" }
-      ],
-      favorite: false,
-      tags: ["anger", "work", "justice"]
-    },
-    {
-      id: 5,
-      title: "Celebrating small victories",
-      date: "Oct 22, 2025",
-      time: "7:00 PM",
-      duration: "8 min",
-      messageCount: 6,
-      emotion: { label: "Joy", emoji: "😊", color: "yellow" },
-      mode: "wisdom",
-      preview: "I achieved a goal today! How do I stay grateful without becoming complacent?",
-      verses: [
-        { chapter: 2, verse: 47, text: "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन" }
-      ],
-      favorite: false,
-      tags: ["gratitude", "success", "happiness"]
-    },
-    {
-      id: 6,
-      title: "Fear of failure",
-      date: "Oct 21, 2025",
-      time: "11:30 PM",
-      duration: "20 min",
-      messageCount: 16,
-      emotion: { label: "Anxiety", emoji: "😰", color: "blue" },
-      mode: "socratic",
-      preview: "I have an important presentation tomorrow and I'm terrified of failing.",
-      verses: [
-        { chapter: 11, verse: 33, text: "निमित्तमात्रं भव सव्यसाचिन्" }
-      ],
-      favorite: true,
-      tags: ["fear", "performance", "anxiety"]
-    },
-    {
-      id: 7,
-      title: "Morning meditation insights",
-      date: "Oct 20, 2025",
-      time: "6:00 AM",
-      duration: "10 min",
-      messageCount: 8,
-      emotion: { label: "Peace", emoji: "😌", color: "green" },
-      mode: "wisdom",
-      preview: "During meditation, I felt a deep sense of connection. What does this mean?",
-      verses: [
-        { chapter: 6, verse: 47, text: "योगिनामपि सर्वेषां मद्गतेनान्तरात्मना" }
-      ],
-      favorite: false,
-      tags: ["meditation", "peace", "spirituality"]
-    },
-    {
-      id: 8,
-      title: "Handling criticism",
-      date: "Oct 19, 2025",
-      time: "3:45 PM",
-      duration: "14 min",
-      messageCount: 11,
-      emotion: { label: "Sadness", emoji: "😢", color: "indigo" },
-      mode: "story",
-      preview: "Someone criticized my work harshly. How do I not take it personally?",
-      verses: [
-        { chapter: 2, verse: 57, text: "यः सर्वत्रानभिस्नेहस्तत्तत्प्राप्य शुभाशुभम्" }
-      ],
-      favorite: false,
-      tags: ["criticism", "ego", "work"]
-    }
-  ];
+  useEffect(() => {
+    // Static demo data instead of API call
+    const loadStaticConversations = () => {
+      setLoading(true);
+      
+      setTimeout(() => {
+        const staticConversations = [
+          {
+            id: 1,
+            title: "Finding peace in chaos",
+            date: "Nov 2, 2024",
+            time: "6:30 PM",
+            duration: "15 min",
+            messageCount: 12,
+            emotion: { label: "Anxiety", emoji: "😰", color: "blue" },
+            mode: "wisdom",
+            preview: "How do I find inner peace when everything around me feels chaotic and overwhelming?",
+            verses: [
+              { chapter: 2, verse: 47, text: "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन" },
+              { chapter: 6, verse: 5, text: "उद्धरेदात्मनात्मानं नात्मानमवसादयेत्" }
+            ],
+            favorite: true,
+            tags: ["peace", "anxiety", "work"]
+          },
+          {
+            id: 2,
+            title: "Understanding my life purpose",
+            date: "Nov 1, 2024",
+            time: "8:15 AM",
+            duration: "22 min",
+            messageCount: 18,
+            emotion: { label: "Confusion", emoji: "🤔", color: "purple" },
+            mode: "socratic",
+            preview: "What is my dharma? How do I know I'm on the right path in life?",
+            verses: [
+              { chapter: 3, verse: 35, text: "श्रेयान्स्वधर्मो विगुणः परधर्मात्स्वनुष्ठितात्" }
+            ],
+            favorite: false,
+            tags: ["dharma", "purpose", "career"]
+          },
+          {
+            id: 3,
+            title: "Letting go of attachments",
+            date: "Oct 31, 2024",
+            time: "9:45 PM",
+            duration: "18 min",
+            messageCount: 14,
+            emotion: { label: "Sadness", emoji: "😢", color: "indigo" },
+            mode: "story",
+            preview: "I'm struggling to let go of someone I love. How do I detach without losing compassion?",
+            verses: [
+              { chapter: 2, verse: 48, text: "योगस्थः कुरु कर्माणि सङ्गं त्यक्त्वा धनञ्जय" }
+            ],
+            favorite: true,
+            tags: ["attachment", "relationships", "love"]
+          },
+          {
+            id: 4,
+            title: "Dealing with workplace conflict",
+            date: "Oct 30, 2024",
+            time: "1:20 PM",
+            duration: "12 min",
+            messageCount: 10,
+            emotion: { label: "Anger", emoji: "😠", color: "red" },
+            mode: "wisdom",
+            preview: "My colleague took credit for my work. I feel so angry and betrayed.",
+            verses: [
+              { chapter: 16, verse: 21, text: "त्रिविधं नरकस्येदं द्वारं नाशनमात्मनः" }
+            ],
+            favorite: false,
+            tags: ["anger", "work", "justice"]
+          },
+          {
+            id: 5,
+            title: "Celebrating small victories",
+            date: "Oct 29, 2024",
+            time: "7:00 PM",
+            duration: "8 min",
+            messageCount: 6,
+            emotion: { label: "Joy", emoji: "😊", color: "yellow" },
+            mode: "wisdom",
+            preview: "I achieved a goal today! How do I stay grateful without becoming complacent?",
+            verses: [
+              { chapter: 2, verse: 47, text: "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन" }
+            ],
+            favorite: false,
+            tags: ["gratitude", "success", "happiness"]
+          },
+          {
+            id: 6,
+            title: "Fear of failure",
+            date: "Oct 28, 2024",
+            time: "11:30 PM",
+            duration: "20 min",
+            messageCount: 16,
+            emotion: { label: "Anxiety", emoji: "😰", color: "blue" },
+            mode: "socratic",
+            preview: "I have an important presentation tomorrow and I'm terrified of failing.",
+            verses: [
+              { chapter: 11, verse: 33, text: "निमित्तमात्रं भव सव्यसाचिन्" }
+            ],
+            favorite: true,
+            tags: ["fear", "performance", "anxiety"]
+          },
+          {
+            id: 7,
+            title: "Morning meditation insights",
+            date: "Oct 27, 2024",
+            time: "6:00 AM",
+            duration: "10 min",
+            messageCount: 8,
+            emotion: { label: "Peace", emoji: "😌", color: "green" },
+            mode: "wisdom",
+            preview: "During meditation, I felt a deep sense of connection. What does this mean?",
+            verses: [
+              { chapter: 6, verse: 47, text: "योगिनामपि सर्वेषां मद्गतेनान्तरात्मना" }
+            ],
+            favorite: false,
+            tags: ["meditation", "peace", "spirituality"]
+          },
+          {
+            id: 8,
+            title: "Handling criticism",
+            date: "Oct 26, 2024",
+            time: "3:45 PM",
+            duration: "14 min",
+            messageCount: 11,
+            emotion: { label: "Sadness", emoji: "😢", color: "indigo" },
+            mode: "story",
+            preview: "Someone criticized my work harshly. How do I not take it personally?",
+            verses: [
+              { chapter: 2, verse: 57, text: "यः सर्वत्रानभिस्नेहस्तत्तत्प्राप्य शुभाशुभम्" }
+            ],
+            favorite: false,
+            tags: ["criticism", "ego", "work"]
+          }
+        ];
+        
+        setConversations(staticConversations);
+        setError(null);
+        setLoading(false);
+      }, 800); // Simulate loading delay
+    };
 
+    loadStaticConversations();
+  }, []);
+
+  // Helper function to get emotion color
+  const getEmotionColor = (emotion) => {
+    const colorMap = {
+      'anxiety': 'blue',
+      'sadness': 'indigo', 
+      'anger': 'red',
+      'joy': 'yellow',
+      'peace': 'green',
+      'confusion': 'purple',
+      'fear': 'blue',
+      'love': 'pink'
+    };
+    return colorMap[emotion?.toLowerCase()] || 'gray';
+  };
+
+
+
+  // Calculate stats from real data
   const stats = {
     totalConversations: conversations.length,
     totalMessages: conversations.reduce((sum, c) => sum + c.messageCount, 0),
-    totalTime: "2h 37min",
+    totalTime: calculateTotalTime(conversations),
     favoriteCount: conversations.filter(c => c.favorite).length,
-    mostFrequentEmotion: "Anxiety"
+    mostFrequentEmotion: getMostFrequentEmotion(conversations)
   };
+
+  // Helper function to calculate total time
+  function calculateTotalTime(convs) {
+    const totalMinutes = convs.reduce((sum, c) => {
+      const duration = parseInt(c.duration.split(' ')[0]) || 0;
+      return sum + duration;
+    }, 0);
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}min`;
+    } else {
+      return `${minutes}min`;
+    }
+  }
+
+  // Helper function to get most frequent emotion
+  function getMostFrequentEmotion(convs) {
+    if (convs.length === 0) return 'Peace';
+    
+    const emotionCounts = {};
+    convs.forEach(c => {
+      const emotion = c.emotion.label;
+      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+    });
+    
+    return Object.keys(emotionCounts).reduce((a, b) => 
+      emotionCounts[a] > emotionCounts[b] ? a : b
+    ) || 'Peace';
+  }
 
   const emotions = [
     { value: 'all', label: 'All Emotions', emoji: '🌟' },
@@ -189,38 +258,51 @@ const MyJourneyPage = () => {
         ? 'dark' 
         : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 text-slate-800'
     }`}>
-      {/* Header */}
-      <div className={`backdrop-blur-md border-b sticky top-0 z-10 ${
-        darkMode 
-          ? 'bg-slate-900/80 border-amber-900/30' 
-          : 'bg-white/80 border-amber-200/50'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <BookOpen className={`w-8 h-8 ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
-              <div>
-                <h1 className={`text-2xl font-bold ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>
-                  My Journey
-                </h1>
-                <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-slate-600'}`}>
-                  Your spiritual conversation history
-                </p>
+      <Navigation darkMode={darkMode}>
+        <div className="p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-3">
+                <BookOpen className={`w-8 h-8 ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
+                <div>
+                  <h1 className={`text-2xl font-bold ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>
+                    My Journey
+                  </h1>
+                  <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-slate-600'}`}>
+                    Your spiritual conversation history
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-3 rounded-xl transition-colors ${
+                  darkMode ? 'bg-amber-900/30 hover:bg-amber-900/50' : 'bg-orange-100 hover:bg-orange-200'
+                }`}
+              >
+                {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-orange-600" />}
+              </button>
             </div>
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-3 rounded-xl transition-colors ${
-                darkMode ? 'bg-amber-900/30 hover:bg-amber-900/50' : 'bg-orange-100 hover:bg-orange-200'
-              }`}
-            >
-              {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-orange-600" />}
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+            <div className="px-4 sm:px-6 py-8">
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className={`w-8 h-8 animate-spin ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
+            <span className={`ml-3 text-lg ${darkMode ? 'text-amber-300' : 'text-slate-600'}`}>
+              Loading your spiritual journey...
+            </span>
+          </div>
+        )}
+
+        {error && (
+          <div className={`p-4 rounded-lg mb-6 ${
+            darkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
+          }`}>
+            <p>Failed to load conversations: {error}</p>
+          </div>
+        )}
+
+        {!loading && (
+          <>
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className={`p-4 rounded-xl text-center ${
@@ -511,8 +593,13 @@ const MyJourneyPage = () => {
             ))
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
+  </div>
+</Navigation>
+</div>
   );
 };
 

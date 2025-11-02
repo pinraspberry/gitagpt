@@ -1,18 +1,64 @@
 'use client';
-import React, { useState } from 'react';
-import { Flame, BookOpen, MessageCircle, Award, TrendingUp, Star } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Flame, BookOpen, MessageCircle, Award, TrendingUp, Star, Loader2 } from 'lucide-react';
+// import { getChatHistory, getSpiritualProgress } from '@/lib/api'; // Commented out - using static data
 
 const SpiritualProgress = ({ darkMode }) => {
-  // Mock data - will come from backend later
-  const userData = {
-    conversationStreak: 7,
-    totalConversations: 23,
-    versesExplored: 45,
-    weeklyGoal: 10,
-    currentWeekConversations: 6,
-    favoriteEmotion: 'Peace',
-    badges: ['first_conversation', 'week_streak', 'peace_seeker']
-  };
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchProgressData = () => {
+      setLoading(true);
+      
+      // Static demo data instead of API calls
+      setTimeout(() => {
+        const staticUserData = {
+          conversationStreak: 7,
+          totalConversations: 23,
+          versesExplored: 45,
+          weeklyGoal: 10,
+          currentWeekConversations: 6,
+          favoriteEmotion: 'Peace',
+          badges: ['first_conversation', 'week_streak', 'peace_seeker', 'verse_explorer']
+        };
+        
+        setUserData(staticUserData);
+        setError(null);
+        setLoading(false);
+      }, 600); // Simulate loading delay
+    };
+
+    fetchProgressData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className={`p-6 rounded-2xl border ${
+        darkMode
+          ? 'bg-gradient-to-br from-slate-800/50 to-amber-900/30 border-amber-700/20'
+          : 'bg-white border-amber-200 shadow-lg'
+      }`}>
+        <div className="flex items-center space-x-2 mb-6">
+          <TrendingUp className={`w-6 h-6 ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
+          <h3 className={`text-xl font-bold ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>
+            Spiritual Progress
+          </h3>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className={`w-6 h-6 animate-spin ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
+          <span className={`ml-2 ${darkMode ? 'text-amber-300' : 'text-slate-600'}`}>
+            Loading progress...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userData) {
+    return null;
+  }
 
   const badges = [
     { id: 'first_conversation', icon: '🕉️', name: 'First Step', description: 'Started your journey', unlocked: true },
@@ -117,6 +163,14 @@ const SpiritualProgress = ({ darkMode }) => {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className={`p-3 rounded-lg mb-4 ${
+          darkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
+        }`}>
+          <p className="text-sm">Some data may not be current: {error}</p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className={`grid grid-cols-3 gap-3 mb-6 p-4 rounded-lg ${

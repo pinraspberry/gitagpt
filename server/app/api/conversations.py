@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from app.db.database import get_db
 from app.core.auth import require_auth, check_user_access
 from app.models.user import User
+from app.models.conversation import ConversationSession, ConversationMessage
 from app.services.conversation_manager import ConversationManager
 from app.schemas.conversation import (
     ConversationSessionCreate,
@@ -297,6 +299,113 @@ async def get_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve session"
+        )
+
+
+@router.get("/history")
+async def get_chat_history(
+    limit: int = 10,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get user's chat history with recent conversations and messages.
+    
+    Returns a summary of recent conversations including session metadata
+    and the most recent messages from each session.
+    """
+    try:
+        # Try direct database connection first
+        try:
+            # Get recent conversation sessions
+            sessions = db.query(ConversationSession).filter(
+                ConversationSession.user_id == current_user.id
+            ).order_by(desc(ConversationSession.started_at)).limit(limit).all()
+            
+            chat_history = []
+            for session in sessions:
+                # Get recent messages from this session
+                messages = db.query(ConversationMessage).filter(
+                    ConversationMessage.session_id == session.id
+                ).order_by(ConversationMessage.sequence_number).limit(10).all()
+                
+                session_data = {
+                    "session_id": str(session.id),
+                    "started_at": session.started_at.isoformat(),
+                    "ended_at": session.ended_at.isoformat() if session.ended_at else None,
+                    "interaction_mode": session.interaction_mode,
+                    "message_count": session.message_count,
+                    "summary": session.summary,
+                    "messages": [
+                        {
+                            "id": str(msg.id),
+                            "role": msg.role,
+                            "content": msg.content[:200] + "..." if len(msg.content) > 200 else msg.content,
+                            "emotion_label": msg.emotion_label,
+                            "emotion_emoji": msg.emotion_emoji,
+                            "verse_id": msg.verse_id,
+                            "created_at": msg.created_at.isoformat()
+                        }
+                        for msg in messages
+                    ]
+                }
+                chat_history.append(session_data)
+            
+            return {
+                "chat_history": chat_history,
+                "total_sessions": len(sessions),
+                "user_id": str(current_user.id)
+            }
+            
+        except Exception as db_error:
+            logger.warning(f"Direct database connection failed, trying Supabase service: {db_error}")
+            logger.info("This is likely due to network connectivity issues with the PostgreSQL connection")
+            
+            # Fallback to Supabase service
+            from app.services.supabase_service import get_supabase_service
+            supabase_service = get_supabase_service()
+            logger.info("Using Supabase REST API as fallback")
+            
+            # Get conversation history using Supabase service
+            conversations = await supabase_service.get_conversation_history(str(current_user.id), limit)
+            
+            chat_history = []
+            for session in conversations:
+                messages = session.get('conversation_messages', [])
+                
+                session_data = {
+                    "session_id": str(session['id']),
+                    "started_at": session['started_at'],
+                    "ended_at": session.get('ended_at'),
+                    "interaction_mode": session.get('interaction_mode', 'wisdom'),
+                    "message_count": session.get('message_count', len(messages)),
+                    "summary": session.get('summary'),
+                    "messages": [
+                        {
+                            "id": str(msg['id']),
+                            "role": msg['role'],
+                            "content": msg['content'][:200] + "..." if len(msg['content']) > 200 else msg['content'],
+                            "emotion_label": msg.get('emotion_label'),
+                            "emotion_emoji": msg.get('emotion_emoji'),
+                            "verse_id": msg.get('verse_id'),
+                            "created_at": msg['created_at']
+                        }
+                        for msg in messages[:10]  # Limit to 10 messages
+                    ]
+                }
+                chat_history.append(session_data)
+            
+            return {
+                "chat_history": chat_history,
+                "total_sessions": len(conversations),
+                "user_id": str(current_user.id)
+            }
+        
+    except Exception as e:
+        logger.error(f"Error getting chat history: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve chat history"
         )
 
 

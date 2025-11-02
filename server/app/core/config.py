@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
+    SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
     
     # AI/ML Settings
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
@@ -34,12 +35,12 @@ class Settings(BaseSettings):
     EMOTION_MODEL: str = "SamLowe/roberta-base-go_emotions-onnx"
     EMOTION_MODEL_FILE: str = "onnx/model_quantized.onnx"
     EMBEDDING_MODEL: str = "all-mpnet-base-v2"
-    LLM_MODEL: str = "gemini-2.0-flash"  # Updated model name
+    LLM_MODEL: str = "gemini-1.5-flash"  # Stable model for consistent responses
     INTENT_MODEL: str = os.getenv("INTENT_MODEL", "facebook/bart-large-mnli")
     
     # Conversation Settings
     CONVERSATION_MEMORY_WINDOW: int = 5
-    EMOTION_CONFIDENCE_THRESHOLD: float = 0.3
+    EMOTION_CONFIDENCE_THRESHOLD: float = 0.15  # Lower threshold for better emotion detection
     INTENT_CONFIDENCE_THRESHOLD: float = float(os.getenv("INTENT_CONFIDENCE_THRESHOLD", "0.6"))
     
     class Config:

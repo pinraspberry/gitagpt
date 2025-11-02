@@ -6,13 +6,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Create database engine with connection pooling
+# Create database engine with connection pooling and better error handling
 engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,  # Recycle connections after 1 hour
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=1800,  # Recycle connections after 30 minutes
+    connect_args={
+        "sslmode": "require",
+        "connect_timeout": 30,
+        "application_name": "GitaGPT"
+    },
     echo=settings.DATABASE_URL.startswith("postgresql://localhost")  # Echo SQL in development
 )
 
@@ -31,9 +36,25 @@ def get_db():
         db.close()
 
 
+def test_connection():
+    """Test database connection"""
+    try:
+        with engine.connect() as connection:
+            result = connection.execute("SELECT 1")
+            logger.info("Database connection successful")
+            return True
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        return False
+
+
 def create_tables():
     """Create all database tables"""
     try:
+        # Test connection first
+        if not test_connection():
+            raise Exception("Cannot connect to database")
+        
         # Import all models to ensure they are registered with Base
         from app.models import User, ConversationSession, ConversationMessage, EmotionLog, VerseMetadata
         

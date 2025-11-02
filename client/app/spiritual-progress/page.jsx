@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Flame, BookOpen, MessageCircle, Award, TrendingUp, Star, Calendar, Target, Zap, Trophy, Heart, Brain, Sun, Moon, ChevronRight, Sparkles } from 'lucide-react';
 import { useThemeMode } from '@/hooks/useThemeMode';
+import Navigation from '@/components/shared/Navigation';
 const SpiritualProgressPage = () => {
   const [darkMode, setDarkMode] = useThemeMode(false);
   const [selectedPeriod, setSelectedPeriod] = useState('month');
@@ -80,38 +81,35 @@ const SpiritualProgressPage = () => {
         ? 'dark' 
         : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 text-slate-800'
     }`}>
-      {/* Header */}
-      <div className={`backdrop-blur-md border-b sticky top-0 z-10 ${
-        darkMode 
-          ? 'bg-slate-900/80 border-amber-900/30' 
-          : 'bg-white/80 border-amber-200/50'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <TrendingUp className={`w-8 h-8 ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
-              <div>
-                <h1 className={`text-2xl font-bold ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>
-                  Spiritual Progress
-                </h1>
-                <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-slate-600'}`}>
-                  Your journey towards enlightenment
-                </p>
+      <Navigation darkMode={darkMode}>
+        <div className="p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-3">
+                <TrendingUp className={`w-8 h-8 ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
+                <div>
+                  <h1 className={`text-2xl font-bold ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>
+                    Spiritual Progress
+                  </h1>
+                  <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-slate-600'}`}>
+                    Your journey towards enlightenment
+                  </p>
+                </div>
               </div>
             </div>
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-3 rounded-xl transition-colors ${
-                darkMode ? 'bg-amber-900/30 hover:bg-amber-900/50' : 'bg-orange-100 hover:bg-orange-200'
-              }`}
-            >
-              {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-orange-600" />}
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+            <div className="flex justify-end mb-8">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-3 rounded-xl transition-colors ${
+                  darkMode ? 'bg-amber-900/30 hover:bg-amber-900/50' : 'bg-orange-100 hover:bg-orange-200'
+                }`}
+              >
+                {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-orange-600" />}
+              </button>
+            </div>
+
+            <div className="space-y-8">
         {/* Level & XP Card */}
         <div className={`p-8 rounded-3xl border-2 ${
           darkMode 
@@ -476,7 +474,10 @@ const SpiritualProgressPage = () => {
             ))}
           </div>
         </div>
-      </div>
+            </div>
+          </div>
+        </div>
+      </Navigation>
     </div>
   );
 };

@@ -3,9 +3,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Sparkles, BookOpen, Brain, MessageSquare, Smile, Heart, Cloud, Zap, Loader2, RotateCcw, Copy, Share2, Star, ChevronDown, AlertCircle } from 'lucide-react';
 import { sendChatMessage, createSession } from '@/lib/api';
 import { useThemeMode } from '@/hooks/useThemeMode';
+import { useAuth } from '@/contexts/AuthContext';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const ChatInterface = () => {
   const [darkMode, setDarkMode] = useThemeMode();
+  const { user, isAuthenticated } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,6 +17,7 @@ const ChatInterface = () => {
   const [showModeInfo, setShowModeInfo] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -40,19 +45,13 @@ const ChatInterface = () => {
     }
   ];
 
-  // Initialize session on mount
+
+
+  // Don't initialize session on mount - let the chat API handle it
+  // This avoids the 401 error for unauthenticated users
   useEffect(() => {
-    const initSession = async () => {
-      try {
-        const session = await createSession(mode);
-        setSessionId(session.id);
-      } catch (err) {
-        console.error('Failed to create session:', err);
-        // Continue without session - will be created on first message
-      }
-    };
-    
-    initSession();
+    // Session will be created automatically on first message
+    console.log('Chat interface initialized - session will be created on first message');
   }, []);
 
   useEffect(() => {
@@ -77,7 +76,17 @@ const ChatInterface = () => {
 
     try {
       // Call backend API
+      console.log('🚀 Sending message:', currentInput);
+      console.log('📡 API URL:', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1');
       const response = await sendChatMessage(currentInput, sessionId, mode);
+      console.log('✅ Received response:', response);
+      console.log('📝 Response reflection length:', response.reflection?.length);
+      console.log('🔍 Full reflection content:', response.reflection);
+      console.log('📊 Response keys:', Object.keys(response));
+      console.log('😊 Emotion:', response.emotion);
+      console.log('📖 Verses count:', response.verses?.length);
+      console.log('🎯 Intent:', response.intent);
+      console.log('⚠️ Fallback used:', response.fallback_used);
       
       // Update session ID if it was created
       if (!sessionId && response.session_id) {
@@ -132,34 +141,257 @@ const ChatInterface = () => {
   const currentMode = modes.find(m => m.id === mode);
 
   return (
-    <div className={`flex flex-col h-screen transition-colors duration-500 ${
+    <div className={`flex h-screen transition-colors duration-500 ${
       darkMode 
         ? 'dark' 
         : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100'
     }`}>
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } ${darkMode ? 'bg-slate-900' : 'bg-white'} border-r ${
+        darkMode ? 'border-amber-700/30' : 'border-orange-200'
+      }`}>
+        <div className="flex flex-col h-full">
+          {/* Sidebar Header */}
+          <div className={`p-4 border-b ${
+            darkMode ? 'border-amber-700/30' : 'border-orange-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Sparkles className={`w-6 h-6 ${
+                  darkMode ? 'text-amber-400' : 'text-orange-600'
+                }`} />
+                <h2 className={`font-bold ${
+                  darkMode ? 'text-amber-100' : 'text-slate-900'
+                }`}>
+                  GitaGPT
+                </h2>
+              </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className={`p-1 rounded ${
+                  darkMode ? 'hover:bg-slate-800 text-amber-300' : 'hover:bg-gray-100 text-slate-600'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          {/* User Status */}
+          {isAuthenticated && user && (
+            <div className={`p-4 border-b ${
+              darkMode ? 'border-amber-700/30' : 'border-orange-200'
+            }`}>
+              <div className="flex items-center space-x-3">
+                {user.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full"
+                  />
+                ) : (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    darkMode ? 'bg-amber-900/30' : 'bg-orange-100'
+                  }`}>
+                    <span className={`text-sm font-semibold ${
+                      darkMode ? 'text-amber-300' : 'text-orange-600'
+                    }`}>
+                      {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium truncate ${
+                    darkMode ? 'text-amber-200' : 'text-slate-900'
+                  }`}>
+                    {user.displayName || 'Spiritual Seeker'}
+                  </p>
+                  <p className={`text-xs truncate ${
+                    darkMode ? 'text-amber-400' : 'text-slate-600'
+                  }`}>
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Navigation Links */}
+          <nav className="flex-1 p-4 space-y-2">
+            <a
+              href="/dashboard"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'hover:bg-amber-900/30 text-amber-200' 
+                  : 'hover:bg-orange-100 text-slate-700'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
+              </svg>
+              <span>Dashboard</span>
+            </a>
+            
+            <a
+              href="/chat"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'bg-amber-900/30 text-amber-200' 
+                  : 'bg-orange-100 text-orange-700'
+              }`}
+            >
+              <MessageSquare className="w-5 h-5" />
+              <span>Chat</span>
+            </a>
+            
+            <a
+              href="/my-journey"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'hover:bg-amber-900/30 text-amber-200' 
+                  : 'hover:bg-orange-100 text-slate-700'
+              }`}
+            >
+              <BookOpen className="w-5 h-5" />
+              <span>My Journey</span>
+            </a>
+            
+            <a
+              href="/spiritual-progress"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'hover:bg-amber-900/30 text-amber-200' 
+                  : 'hover:bg-orange-100 text-slate-700'
+              }`}
+            >
+              <Star className="w-5 h-5" />
+              <span>Spiritual Progress</span>
+            </a>
+            
+            <a
+              href="/settings"
+              className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'hover:bg-amber-900/30 text-amber-200' 
+                  : 'hover:bg-orange-100 text-slate-700'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span>Settings</span>
+            </a>
+            
+            {/* Authentication */}
+            <div className="mt-4 pt-4 border-t border-amber-700/30">
+              {isAuthenticated ? (
+                <button
+                  onClick={async () => {
+                    const { logOut } = await import('@/lib/firebase');
+                    await logOut();
+                  }}
+                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                    darkMode 
+                      ? 'hover:bg-red-900/30 text-red-300' 
+                      : 'hover:bg-red-100 text-red-700'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span>Sign Out</span>
+                </button>
+              ) : (
+                <button
+                  onClick={async () => {
+                    const { signInWithGoogle } = await import('@/lib/firebase');
+                    await signInWithGoogle();
+                  }}
+                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                    darkMode 
+                      ? 'hover:bg-amber-900/30 text-amber-200' 
+                      : 'hover:bg-orange-100 text-slate-700'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span>Sign In with Google</span>
+                </button>
+              )}
+            </div>
+          </nav>
+        </div>
+      </div>
+      
+      {/* Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black bg-opacity-50"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 h-screen">
       {/* Header */}
-      <div className={`backdrop-blur-md border-b transition-all ${
+      <div className={`backdrop-blur-md border-b transition-all relative z-30 ${
         darkMode 
           ? 'bg-slate-900/80 border-amber-900/30' 
           : 'bg-white/80 border-amber-200/50'
       }`}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-3">
+              {/* Sidebar Toggle */}
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className={`p-2 rounded-lg transition-colors ${
+                  darkMode 
+                    ? 'bg-amber-900/30 hover:bg-amber-900/50 text-amber-300' 
+                    : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              
+              {/* Back to Dashboard */}
+              <button
+                onClick={() => window.location.href = '/dashboard'}
+                className={`p-2 rounded-lg transition-colors ${
+                  darkMode 
+                    ? 'bg-amber-900/30 hover:bg-amber-900/50 text-amber-300' 
+                    : 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                }`}
+                title="Back to Dashboard"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
+              
               <div className={`p-2 rounded-xl ${
                 darkMode ? 'bg-amber-900/30' : 'bg-orange-100'
               }`}>
-                <Sparkles className={`w-6 h-6 ${
+                <Sparkles className={`w-5 h-5 ${
                   darkMode ? 'text-amber-400' : 'text-orange-600'
                 }`} />
               </div>
               <div>
-                <h1 className={`text-xl font-bold ${
+                <h1 className={`text-lg font-bold ${
                   darkMode ? 'text-amber-100' : 'text-slate-900'
                 }`}>
                   GitaGPT Companion
                 </h1>
-                <p className={`text-sm ${
+                <p className={`text-xs ${
                   darkMode ? 'text-amber-300' : 'text-slate-600'
                 }`}>
                   Your spiritual guide powered by AI
@@ -180,7 +412,7 @@ const ChatInterface = () => {
           </div>
 
           {/* Mode Selector */}
-          <div className="relative">
+          <div className="relative z-40">
             <button
               onClick={() => setShowModeInfo(!showModeInfo)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
@@ -212,7 +444,7 @@ const ChatInterface = () => {
             </button>
 
             {showModeInfo && (
-              <div className={`absolute top-full left-0 right-0 mt-2 p-2 rounded-xl border z-10 ${
+              <div className={`absolute top-full left-0 right-0 mt-2 p-2 rounded-xl border z-50 ${
                 darkMode
                   ? 'bg-slate-800 border-amber-700/30'
                   : 'bg-white border-amber-200 shadow-xl'
@@ -247,11 +479,13 @@ const ChatInterface = () => {
               </div>
             )}
           </div>
+
+
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="max-w-5xl mx-auto space-y-6">
           {/* Error Banner */}
           {error && (
@@ -286,13 +520,26 @@ const ChatInterface = () => {
               <h2 className={`text-3xl font-bold mb-4 ${
                 darkMode ? 'text-amber-100' : 'text-slate-900'
               }`}>
-                Welcome, Seeker 🙏
+                Welcome, {isAuthenticated ? (user?.displayName?.split(' ')[0] || 'Seeker') : 'Seeker'} 🙏
               </h2>
               <p className={`text-lg mb-6 ${
                 darkMode ? 'text-amber-200' : 'text-slate-600'
               }`}>
                 Share what's on your mind. I'm here to guide you with wisdom from the Bhagavad Gita.
               </p>
+
+              
+              {!isAuthenticated && (
+                <div className={`max-w-md mx-auto p-4 rounded-xl border mb-6 ${
+                  darkMode 
+                    ? 'bg-amber-900/20 border-amber-700/30 text-amber-200' 
+                    : 'bg-orange-50 border-orange-200 text-orange-800'
+                }`}>
+                  <p className="text-sm">
+                    💡 <strong>Sign in</strong> to save your conversations and track your spiritual journey!
+                  </p>
+                </div>
+              )}
               
               <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto mt-8">
                 {[
@@ -327,7 +574,7 @@ const ChatInterface = () => {
               key={message.id}
               className={`flex ${
                 message.role === 'user' ? 'justify-end' : 'justify-start'
-              } animate-fade-in`}
+              } animate-fade-in relative z-10`}
             >
               <div className={`max-w-[85%] ${
                 message.role === 'user' ? 'ml-12' : 'mr-12'
@@ -467,11 +714,126 @@ const ChatInterface = () => {
                     )}
 
                     {/* AI Response */}
-                    <p className={`leading-relaxed mb-4 ${
-                      darkMode ? 'text-amber-100' : 'text-slate-800'
-                    }`}>
-                      {message.content}
-                    </p>
+                    <div className="leading-relaxed mb-4 max-w-none">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // Custom styling for code blocks (Sanskrit)
+                          code: ({node, inline, className, children, ...props}) => {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const language = match ? match[1] : '';
+                            
+                            if (inline) {
+                              return (
+                                <code 
+                                  className={`px-2 py-1 rounded text-sm font-mono ${
+                                    darkMode 
+                                      ? 'bg-amber-900/30 text-amber-300' 
+                                      : 'bg-orange-100 text-orange-700 font-semibold'
+                                  }`} 
+                                  {...props}
+                                >
+                                  {children}
+                                </code>
+                              );
+                            }
+                            
+                            return (
+                              <div className={`my-4 p-5 rounded-xl border-l-4 ${
+                                darkMode 
+                                  ? 'bg-amber-900/20 border-amber-500' 
+                                  : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-400 shadow-sm'
+                              }`}>
+                                <pre className={`font-serif text-xl leading-relaxed overflow-x-auto ${
+                                  language === 'sanskrit' 
+                                    ? darkMode ? 'text-amber-200' : 'text-orange-800 font-medium'
+                                    : darkMode ? 'text-amber-300' : 'text-orange-700 font-medium'
+                                }`}>
+                                  <code {...props}>{children}</code>
+                                </pre>
+                              </div>
+                            );
+                          },
+                          // Custom styling for blockquotes
+                          blockquote: ({children}) => (
+                            <blockquote className={`border-l-4 pl-4 py-3 my-4 italic font-medium ${
+                              darkMode 
+                                ? 'border-amber-500 bg-amber-900/20 text-amber-100' 
+                                : 'border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50 text-orange-800 shadow-sm'
+                            }`}>
+                              {children}
+                            </blockquote>
+                          ),
+                          // Custom styling for headings
+                          h1: ({children}) => (
+                            <h1 className={`text-2xl font-bold mb-4 ${
+                              darkMode ? 'text-amber-100' : 'text-orange-800'
+                            }`}>
+                              {children}
+                            </h1>
+                          ),
+                          h2: ({children}) => (
+                            <h2 className={`text-xl font-bold mb-3 mt-6 ${
+                              darkMode ? 'text-amber-100' : 'text-orange-700'
+                            }`}>
+                              {children}
+                            </h2>
+                          ),
+                          h3: ({children}) => (
+                            <h3 className={`text-lg font-semibold mb-2 mt-4 ${
+                              darkMode ? 'text-amber-200' : 'text-orange-600'
+                            }`}>
+                              {children}
+                            </h3>
+                          ),
+                          // Custom styling for horizontal rules
+                          hr: () => (
+                            <hr className={`my-6 border-t-2 ${
+                              darkMode ? 'border-amber-700/30' : 'border-orange-300'
+                            }`} />
+                          ),
+                          // Custom styling for lists
+                          ul: ({children}) => (
+                            <ul className={`list-disc list-inside space-y-2 my-4 ${
+                              darkMode ? 'text-amber-100' : 'text-slate-800'
+                            }`}>
+                              {children}
+                            </ul>
+                          ),
+                          li: ({children}) => (
+                            <li className={`leading-relaxed ${
+                              darkMode ? 'text-amber-100' : 'text-slate-800'
+                            }`}>{children}</li>
+                          ),
+                          // Custom styling for paragraphs
+                          p: ({children}) => (
+                            <p className={`mb-4 leading-relaxed ${
+                              darkMode ? 'text-amber-100' : 'text-slate-800'
+                            }`}>
+                              {children}
+                            </p>
+                          ),
+                          // Custom styling for strong/bold text
+                          strong: ({children}) => (
+                            <strong className={`font-semibold ${
+                              darkMode ? 'text-amber-200' : 'text-orange-700'
+                            }`}>
+                              {children}
+                            </strong>
+                          ),
+                          // Custom styling for emphasis/italic text
+                          em: ({children}) => (
+                            <em className={`italic ${
+                              darkMode ? 'text-amber-200' : 'text-orange-600'
+                            }`}>
+                              {children}
+                            </em>
+                          )
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
 
                     {/* Message Actions */}
                     <div className="flex items-center justify-between pt-4 border-t border-amber-700/20">
@@ -572,7 +934,7 @@ const ChatInterface = () => {
           ? 'bg-slate-900/80 border-amber-900/30' 
           : 'bg-white/80 border-amber-200/50'
       }`}>
-        <div className="max-w-5xl mx-auto px-4 py-4">
+        <div className="max-w-5xl mx-auto px-4 py-2">
           <div className="flex items-end space-x-3">
             <div className="flex-1 relative">
               <textarea
@@ -581,13 +943,13 @@ const ChatInterface = () => {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Share what's on your mind... (Press Enter to send)"
-                className={`w-full px-4 py-3 pr-12 rounded-xl resize-none border-2 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all ${
+                className={`w-full px-4 py-2 pr-12 rounded-xl resize-none border-2 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all ${
                   darkMode
                     ? 'bg-slate-800 border-amber-700/30 text-amber-100 placeholder-amber-400/50'
                     : 'bg-white border-amber-200 text-slate-900 placeholder-slate-400'
                 }`}
                 disabled={loading}
-                rows={input.split('\n').length > 3 ? 4 : Math.max(1, input.split('\n').length)}
+                rows={input.split('\n').length > 3 ? 3 : Math.max(1, input.split('\n').length)}
               />
               <button
                 onClick={() => setInput('')}
@@ -606,7 +968,7 @@ const ChatInterface = () => {
             <button
               onClick={handleSend}
               disabled={loading || !input.trim()}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 ${
+              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 ${
                 loading || !input.trim()
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg hover:shadow-xl hover:scale-105'
@@ -626,7 +988,7 @@ const ChatInterface = () => {
             </button>
           </div>
 
-          <div className={`mt-3 flex items-center justify-between text-xs ${
+          <div className={`mt-2 flex items-center justify-between text-xs ${
             darkMode ? 'text-amber-400' : 'text-slate-500'
           }`}>
             <p>
@@ -655,6 +1017,7 @@ const ChatInterface = () => {
           animation: fade-in 0.3s ease-out;
         }
       `}</style>
+      </div>
     </div>
   );
 };

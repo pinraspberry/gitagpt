@@ -9,10 +9,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1
  */
 async function getAuthToken() {
   try {
-    // This assumes you have Firebase initialized in your app
-    // You'll need to import and use your Firebase auth instance
-    const { getAuth } = await import('firebase/auth');
-    const auth = getAuth();
+    const { auth } = await import('@/lib/firebase');
     const user = auth.currentUser;
     
     if (!user) {
@@ -70,7 +67,7 @@ export async function sendChatMessage(userInput, sessionId = null, interactionMo
 }
 
 /**
- * Create a new conversation session
+ * Create a new conversation session (requires authentication)
  * 
  * @param {string} interactionMode - One of 'wisdom', 'socratic', 'story'
  * @returns {Promise<Object>} Session object with id and metadata
@@ -79,14 +76,15 @@ export async function createSession(interactionMode = 'wisdom') {
   try {
     const token = await getAuthToken();
     
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-    
-    // Only add Authorization header if token exists
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    // Require authentication for session creation
+    if (!token) {
+      throw new Error('Authentication required to create session');
     }
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
     
     const response = await fetch(`${API_URL}/conversations/sessions`, {
       method: 'POST',
@@ -227,6 +225,113 @@ export async function searchVerses(query, emotion = null, topK = 5) {
     return await response.json();
   } catch (error) {
     console.error('Error searching verses:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user's chat history
+ * 
+ * @param {number} limit - Number of recent sessions to retrieve
+ * @returns {Promise<Object>} Chat history with sessions and messages
+ */
+export async function getChatHistory(limit = 10) {
+  try {
+    const token = await getAuthToken();
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    
+    const response = await fetch(`${API_URL}/conversations/history?limit=${limit}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      let errorMessage = 'Failed to get chat history';
+      try {
+        const error = await response.json();
+        errorMessage = error.detail || error.message || `HTTP ${response.status}: ${response.statusText}`;
+      } catch (parseError) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting chat history:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user profile and spiritual progress
+ * 
+ * @returns {Promise<Object>} User profile with spiritual metrics
+ */
+export async function getUserProfile() {
+  try {
+    const token = await getAuthToken();
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    
+    const response = await fetch(`${API_URL}/users/profile`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to get user profile');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user's spiritual progress analytics
+ * 
+ * @param {string} timeframe - 'week', 'month', 'year'
+ * @returns {Promise<Object>} Spiritual progress data
+ */
+export async function getSpiritualProgress(timeframe = 'month') {
+  try {
+    const token = await getAuthToken();
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    
+    const response = await fetch(`${API_URL}/analytics/spiritual-progress?timeframe=${timeframe}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      let errorMessage = 'Failed to get spiritual progress';
+      try {
+        const error = await response.json();
+        errorMessage = error.detail || error.message || `HTTP ${response.status}: ${response.statusText}`;
+      } catch (parseError) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting spiritual progress:', error);
     throw error;
   }
 }

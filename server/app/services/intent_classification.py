@@ -148,7 +148,10 @@ class IntentClassificationService:
         emotional_keywords = [
             'feel', 'feeling', 'anxious', 'worried', 'sad', 'depressed',
             'stressed', 'confused', 'guilty', 'angry', 'frustrated',
-            'overwhelmed', 'scared', 'afraid', 'hurt', 'pain', 'suffering'
+            'overwhelmed', 'scared', 'afraid', 'hurt', 'pain', 'suffering',
+            'lost', 'don\'t know', 'dont know', 'career', 'life', 'future',
+            'problem', 'issue', 'struggle', 'difficult', 'hard', 'tough',
+            'upset', 'disappointed', 'hopeless', 'helpless', 'stuck'
         ]
         
         # Spiritual keywords

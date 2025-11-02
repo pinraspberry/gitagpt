@@ -7,6 +7,7 @@ from .conversations import router as conversations_router
 from .logs import router as logs_router
 from .analytics import router as analytics_router
 from .chat import router as chat_router
+from .users import router as users_router
 
 api_router = APIRouter()
 
@@ -19,5 +20,6 @@ api_router.include_router(reflections_router, prefix="/api/v1")
 api_router.include_router(conversations_router, prefix="/api/v1")
 api_router.include_router(logs_router, prefix="/api/v1")
 api_router.include_router(analytics_router, prefix="/api/v1")
+api_router.include_router(users_router, prefix="/api/v1")
 
 __all__ = ["api_router"]

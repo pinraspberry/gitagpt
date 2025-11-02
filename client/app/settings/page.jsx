@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Bell, Lock, Palette, Globe, Download, Trash2, Shield, Moon, Sun } from 'lucide-react';
-import Sidebar from '@/components/dashboard/Sidebar';
+import Navigation from '@/components/shared/Navigation';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
 export default function Settings() {
@@ -31,9 +31,8 @@ export default function Settings() {
         ? 'dark' 
         : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 text-slate-800'
     }`}>
-      <Sidebar darkMode={darkMode} />
-
-      <div className="ml-64 p-8">
+      <Navigation darkMode={darkMode}>
+        <div className="p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className={`text-4xl font-bold mb-8 ${
             darkMode ? 'text-amber-100' : 'text-slate-900'
@@ -321,7 +320,8 @@ export default function Settings() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </Navigation>
     </div>
   );
 }

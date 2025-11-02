@@ -1,34 +1,82 @@
 'use client';
-import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Edit2, Save, BookOpen, MessageCircle, Award, Calendar, Heart } from 'lucide-react';
-import Sidebar from '@/components/dashboard/Sidebar';
-import { useAuth } from '@/components/shared/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { User, Mail, Phone, MapPin, Edit2, Save, BookOpen, MessageCircle, Award, Calendar, Heart, Loader2 } from 'lucide-react';
+import Navigation from '@/components/shared/Navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { useThemeMode } from '@/hooks/useThemeMode';
+// import { getChatHistory } from '@/lib/api'; // Commented out - using static data
 
 export default function Profile() {
-  const [darkMode, setDarkMode] = useThemeMode();
+  const [darkMode] = useThemeMode();
   const [isEditing, setIsEditing] = useState(false);
-  const { userData } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
 
   const [profile, setProfile] = useState({
-    firstName: userData?.firstName || 'Arjuna',
-    lastName: userData?.lastName || 'Pandava',
-    email: userData?.email || 'arjuna@gitagpt.com',
-    phone: userData?.phone || '+91 9876543210',
-    city: userData?.city || 'Ahmedabad',
-    state: userData?.state || 'Gujarat',
-    country: userData?.country || 'India',
-    bio: 'Seeking wisdom and inner peace through the teachings of the Bhagavad Gita.'
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    city: '',
+    state: '',
+    country: '',
+    bio: ''
   });
 
-  const stats = {
-    totalConversations: 47,
-    versesExplored: 123,
-    favoriteVerses: 8,
-    streakDays: 15,
-    joinedDate: 'October 2024',
+  const [stats, setStats] = useState({
+    totalConversations: 0,
+    versesExplored: 0,
+    favoriteVerses: 0,
+    streakDays: 0,
+    joinedDate: '',
     topEmotion: 'Peace'
-  };
+  });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        // Set basic profile data from Firebase user
+        const nameParts = user.displayName ? user.displayName.split(' ') : ['', ''];
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        setProfile(prev => ({
+          ...prev,
+          firstName,
+          lastName,
+          email: user.email || '',
+          bio: prev.bio || 'Seeking wisdom and inner peace through the teachings of the Bhagavad Gita.'
+        }));
+
+        // Use static stats data instead of API call
+        setStats({
+          totalConversations: 23,
+          versesExplored: 45,
+          favoriteVerses: 8,
+          streakDays: 7,
+          joinedDate: 'October 2024',
+          topEmotion: 'Peace'
+        });
+        
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+        setError('Failed to load profile data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [user]);
 
   const favoriteVerses = [
     { chapter: 2, verse: 47, text: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन' },
@@ -49,23 +97,53 @@ export default function Profile() {
     setProfile({ ...profile, [e.target.name]: e.target.value });
   };
 
+  if (loading) {
+    return (
+      <div className={`min-h-screen transition-colors ${
+        darkMode 
+          ? 'bg-gradient-to-br from-slate-900 via-amber-950 to-slate-900 text-amber-50' 
+          : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 text-slate-800'
+      }`}>
+        <Navigation darkMode={darkMode}>
+          <div className="p-6">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className={`w-8 h-8 animate-spin ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
+                <span className={`ml-3 text-lg ${darkMode ? 'text-amber-300' : 'text-slate-600'}`}>
+                  Loading your profile...
+                </span>
+              </div>
+            </div>
+          </div>
+        </Navigation>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen transition-colors ${
       darkMode 
         ? 'bg-gradient-to-br from-slate-900 via-amber-950 to-slate-900 text-amber-50' 
         : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 text-slate-800'
     }`}>
-      <Sidebar darkMode={darkMode} />
+      <Navigation darkMode={darkMode}>
+        <div className="p-6">
+          <div className="max-w-6xl mx-auto">
+            <h1 className={`text-4xl font-bold mb-8 ${
+              darkMode ? 'text-amber-100' : 'text-slate-900'
+            }`}>
+              My Profile
+            </h1>
 
-      <div className="ml-64 p-8">
-        <div className="max-w-6xl mx-auto">
-          <h1 className={`text-4xl font-bold mb-8 ${
-            darkMode ? 'text-amber-100' : 'text-slate-900'
-          }`}>
-            My Profile
-          </h1>
+            {error && (
+              <div className={`p-4 rounded-lg mb-6 ${
+                darkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
+              }`}>
+                <p>Error loading profile: {error}</p>
+              </div>
+            )}
 
-          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column - Profile Card */}
             <div className="lg:col-span-1">
               <div className={`p-6 rounded-2xl border ${
@@ -81,7 +159,7 @@ export default function Profile() {
                   }`}>
                     {profile.firstName[0]}{profile.lastName[0]}
                   </div>
-                  <h2 className="text-2xl font-bold mb-1">
+                  <h2 className={`text-2xl font-bold mb-1 ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>
                     {profile.firstName} {profile.lastName}
                   </h2>
                   <p className={`text-sm ${darkMode ? 'text-amber-300' : 'text-slate-600'}`}>
@@ -153,7 +231,7 @@ export default function Profile() {
                   : 'bg-white border-amber-200 shadow-lg'
               }`}>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold">Personal Information</h3>
+                  <h3 className={`text-2xl font-bold ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>Personal Information</h3>
                   {isEditing && (
                     <button
                       onClick={handleSave}
@@ -167,9 +245,9 @@ export default function Profile() {
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">First Name</label>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>First Name</label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <User className={`absolute left-3 top-3 w-5 h-5 ${darkMode ? 'text-amber-400' : 'text-slate-500'}`} />
                       <input
                         type="text"
                         name="firstName"
@@ -186,9 +264,9 @@ export default function Profile() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Last Name</label>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>Last Name</label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <User className={`absolute left-3 top-3 w-5 h-5 ${darkMode ? 'text-amber-400' : 'text-slate-500'}`} />
                       <input
                         type="text"
                         name="lastName"
@@ -205,9 +283,9 @@ export default function Profile() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>Email</label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <Mail className={`absolute left-3 top-3 w-5 h-5 ${darkMode ? 'text-amber-400' : 'text-slate-500'}`} />
                       <input
                         type="email"
                         name="email"
@@ -224,9 +302,9 @@ export default function Profile() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Phone</label>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>Phone</label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <Phone className={`absolute left-3 top-3 w-5 h-5 ${darkMode ? 'text-amber-400' : 'text-slate-500'}`} />
                       <input
                         type="tel"
                         name="phone"
@@ -243,9 +321,9 @@ export default function Profile() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">City</label>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>City</label>
                     <div className="relative">
-                      <MapPin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <MapPin className={`absolute left-3 top-3 w-5 h-5 ${darkMode ? 'text-amber-400' : 'text-slate-500'}`} />
                       <input
                         type="text"
                         name="city"
@@ -262,9 +340,9 @@ export default function Profile() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">State</label>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>State</label>
                     <div className="relative">
-                      <MapPin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <MapPin className={`absolute left-3 top-3 w-5 h-5 ${darkMode ? 'text-amber-400' : 'text-slate-500'}`} />
                       <input
                         type="text"
                         name="state"
@@ -281,9 +359,9 @@ export default function Profile() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Country</label>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>Country</label>
                     <div className="relative">
-                      <MapPin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <MapPin className={`absolute left-3 top-3 w-5 h-5 ${darkMode ? 'text-amber-400' : 'text-slate-500'}`} />
                       <input
                         type="text"
                         name="country"
@@ -300,7 +378,7 @@ export default function Profile() {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Bio</label>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>Bio</label>
                     <textarea
                       name="bio"
                       value={profile.bio}
@@ -325,7 +403,7 @@ export default function Profile() {
               }`}>
                 <div className="flex items-center space-x-2 mb-6">
                   <Heart className={`w-6 h-6 ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
-                  <h3 className="text-2xl font-bold">Favorite Verses</h3>
+                  <h3 className={`text-2xl font-bold ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>Favorite Verses</h3>
                 </div>
 
                 <div className="space-y-4">
@@ -376,7 +454,7 @@ export default function Profile() {
               }`}>
                 <div className="flex items-center space-x-2 mb-4">
                   <Award className={`w-6 h-6 ${darkMode ? 'text-amber-400' : 'text-orange-600'}`} />
-                  <h3 className="text-2xl font-bold">Your Spiritual Journey</h3>
+                  <h3 className={`text-2xl font-bold ${darkMode ? 'text-amber-100' : 'text-slate-900'}`}>Your Spiritual Journey</h3>
                 </div>
                 <p className={`text-lg ${darkMode ? 'text-amber-200' : 'text-slate-700'}`}>
                   You've been on a beautiful path of self-discovery for the past {stats.streakDays} days. 
@@ -388,6 +466,7 @@ export default function Profile() {
           </div>
         </div>
       </div>
+      </Navigation>
     </div>
   );
 }
