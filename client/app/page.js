@@ -124,7 +124,7 @@ const GeetaGPTLanding = () => {
   return (
     <div className={`min-h-screen transition-colors duration-500 ${
       darkMode 
-        ? 'dark' 
+        ? 'dark bg-slate-900 text-amber-100' 
         : 'bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 text-slate-800'
     }`}>
       
